@@ -1,23 +1,24 @@
-// c libraries
+// C libraries
 #include <stdio.h>
 #include <stdlib.h>
-// cuda libraries
+// CUDA libraries
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 // image processing library
 #include "lodepng.h"
 
-// Device Code
-__global__ void rectification(unsigned char *input_image, unsigned char *output_image, int width, int height, int size) {
+// Device (GPU) Code
+__global__ void rectification(unsigned char *input_image, unsigned char *output_image, int width, int height, int array_size) {
     // thread's x coordinate in the block, corresponds to width
     int x = blockDim.x * blockIdx.x + threadIdx.x;
     // thread's y coordinate in the block, corresponds to height
     int y = blockDim.y * blockIdx.y + threadIdx.y;
     if(x < width && y < height) {
         // calculate the index of the pixel in the input image array
-        int pixel_index = 4*width*y + 4*x;
+        int pixel_index = 4 * width * y + 4 * x;
+        // there are 4 values for a pixel: R, G, B, A. Loop over all of them to rectify them
         for (int i = 0; i < 4; i++) {
-            if (pixel_index + i < size) {
+            if (pixel_index + i < array_size) {
                 int value = (int) input_image[pixel_index+i];
                 if (value < 127) value = 127;
                 output_image[pixel_index+i] = (unsigned char) value;
@@ -26,7 +27,7 @@ __global__ void rectification(unsigned char *input_image, unsigned char *output_
     }
 }
 
-// Host Code
+// Host (CPU) Code
 int main(int argc, char *argv[]) {
     
     if (argc <= 1) {
@@ -47,8 +48,6 @@ int main(int argc, char *argv[]) {
 
     // load input image from file to buffer array
     error = lodepng_decode32_file(&input_image, &width, &height, input_filename);
-
-    printf("%d\n", error);
     
     // if there is an error while loading the file, return the error
     if(error) return printf("Error: %u: %s\n", error, lodepng_error_text(error));
@@ -56,6 +55,7 @@ int main(int argc, char *argv[]) {
     // initalize device variable to copy the input image over to the GPU
     unsigned char *d_input, *d_output;
     int size = width * height * 4 * sizeof(unsigned char);
+    int array_size = width * height * 4;
 
     cudaMalloc(&d_input, size);
     cudaMalloc(&d_output, size);
@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
     dim3 numBlocks(width/threads_no, height/threads_no);
 
     // run device kernel
-    rectification<<<numBlocks, blockSize>>>(d_input, d_output, width, height, size);
+    rectification<<<numBlocks, blockSize>>>(d_input, d_output, width, height, array_size);
     
     // synchronize device to get the output back from the device
     cudaDeviceSynchronize();
@@ -85,4 +85,7 @@ int main(int argc, char *argv[]) {
     // free up device memory;
     cudaFree(d_input);
     cudaFree(d_output);
+
+    // free up host memory;
+    free(output_image);
 }
