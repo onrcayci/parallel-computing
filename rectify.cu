@@ -7,7 +7,7 @@
 // image processing library
 #include "lodepng.h"
 
-// Device (GPU) Code
+// Device Code
 __global__ void rectification(unsigned char *input_image, unsigned char *output_image, int width, int height, int array_size) {
     // thread's x coordinate in the block, corresponds to width
     int x = blockDim.x * blockIdx.x + threadIdx.x;
@@ -16,7 +16,7 @@ __global__ void rectification(unsigned char *input_image, unsigned char *output_
     if(x < width && y < height) {
         // calculate the index of the pixel in the input image array
         int pixel_index = 4 * width * y + 4 * x;
-        // there are 4 values for a pixel: R, G, B, A. Loop over all of them to rectify them
+        // there are 4 values for a pixel: R, G, B, A. Loop over all of them to rectify them        
         for (int i = 0; i < 4; i++) {
             if (pixel_index + i < array_size) {
                 int value = (int) input_image[pixel_index+i];
@@ -27,7 +27,7 @@ __global__ void rectification(unsigned char *input_image, unsigned char *output_
     }
 }
 
-// Host (CPU) Code
+// Host Code
 int main(int argc, char *argv[]) {
     
     if (argc <= 1) {
@@ -59,6 +59,11 @@ int main(int argc, char *argv[]) {
 
     cudaMalloc(&d_input, size);
     cudaMalloc(&d_output, size);
+
+    // create CUDA events to time the kernel runtime
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
     
     // copy image from host memory to device memory
     cudaMemcpy(d_input, input_image, size, cudaMemcpyHostToDevice);
@@ -67,17 +72,27 @@ int main(int argc, char *argv[]) {
     dim3 blockSize(threads_no, threads_no);
     dim3 numBlocks(width/threads_no, height/threads_no);
 
+    // record start time
+    cudaEventRecord(start);
+
     // run device kernel
     rectification<<<numBlocks, blockSize>>>(d_input, d_output, width, height, array_size);
+
+    // record stop time
+    cudaEventRecord(stop);
     
     // synchronize device to get the output back from the device
-    cudaDeviceSynchronize();
+    // cudaDeviceSynchronize();
 
     // initialize output image array to copy output from device to host
     unsigned char *output_image = (unsigned char*)malloc(size);
 
     // copy output image from device to host
     cudaMemcpy(output_image, d_output, size, cudaMemcpyDeviceToHost);
+
+    cudaEventSynchronize(stop);
+    float milliseconds = 0;
+    cudaEventElapsedTime(&milliseconds, start, stop);
 
     // save output image
     lodepng_encode32_file(output_filename, output_image, width, height);
@@ -88,4 +103,8 @@ int main(int argc, char *argv[]) {
 
     // free up host memory;
     free(output_image);
+
+    //print elapsed time
+    printf("Time Elapsed: %f ms\n", milliseconds);
+    printf("Time Elapsed: %f ns\n", milliseconds * 1000);
 }
