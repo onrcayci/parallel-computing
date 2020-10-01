@@ -8,21 +8,15 @@
 #include "lodepng.h"
 
 // Device Code
-__global__ void rectification(unsigned char *input_image, unsigned char *output_image, int width, int height, int array_size) {
-    // thread's x coordinate in the block, corresponds to width
-    int x = blockDim.x * blockIdx.x + threadIdx.x;
-    // thread's y coordinate in the block, corresponds to height
-    int y = blockDim.y * blockIdx.y + threadIdx.y;
-    if(x < width && y < height) {
-        // calculate the index of the pixel in the input image array
-        int pixel_index = 4 * width * y + 4 * x;
-        // there are 4 values for a pixel: R, G, B, A. Loop over all of them to rectify them        
-        for (int i = 0; i < 4; i++) {
-            if (pixel_index + i < array_size) {
-                int value = (int) input_image[pixel_index+i];
-                if (value < 127) value = 127;
-                output_image[pixel_index+i] = (unsigned char) value;
-            }
+__global__ void rectification(unsigned char *input_image, unsigned char *output_image, int array_size) {
+    // thread's index in the block structure
+    int pixel_index = threadIdx.x + blockIdx.x * blockDim.x;
+    // there are 4 values for a pixel: R, G, B, A. Loop over all of them to rectify them        
+    for (int i = 0; i < 4; i++) {
+        if (pixel_index + i < array_size) {
+            int value = (int) input_image[pixel_index+i];
+            if (value < 127) value = 127;
+            output_image[pixel_index+i] = (unsigned char) value;
         }
     }
 }
@@ -68,15 +62,11 @@ int main(int argc, char *argv[]) {
     // copy image from host memory to device memory
     cudaMemcpy(d_input, input_image, size, cudaMemcpyHostToDevice);
 
-    // initialize block size and block number to process the images
-    dim3 blockSize(threads_no, threads_no);
-    dim3 numBlocks(width/threads_no, height/threads_no);
-
     // record start time
     cudaEventRecord(start);
 
     // run device kernel
-    rectification<<<numBlocks, blockSize>>>(d_input, d_output, width, height, array_size);
+    rectification<<<(array_size + threads_no - 1) / threads_no, threads_no>>>(d_input, d_output, array_size);
 
     // record stop time
     cudaEventRecord(stop);
@@ -107,5 +97,4 @@ int main(int argc, char *argv[]) {
 
     //print elapsed time
     printf("Time Elapsed: %f ms\n", milliseconds);
-    printf("Time Elapsed: %f ns\n", milliseconds * 1000);
 }
