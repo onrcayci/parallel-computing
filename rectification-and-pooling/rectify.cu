@@ -102,6 +102,7 @@ int main(int argc, char *argv[]) {
     cudaFree(d_output);
 
     // free up host memory;
+    free(input_image);
     free(output_image);
 
     //print elapsed time
