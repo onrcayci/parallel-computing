@@ -7,23 +7,6 @@
 // image processing library
 #include "lodepng.h"
 
-// Breaks down the image into section using thread_no
-void getSections(int* width, int* height, int threads_no) {
-  
-  bool side = true;
-  *height = 1;
-  *width = 1;
-
-  while (threads_no > 1) {
-    if (!side) {
-      *height *= 2;
-    } else {
-      *width *= 2;
-    }
-    side = !side;
-    threads_no = threads_no / 2;
-  }
-}
 
 /* GPU function */
 __global__ void pool(unsigned char* new_img, unsigned char* output_img, int xNumSections, int yNumSections, int input_img_width, int input_img_height) {
@@ -136,9 +119,21 @@ int main(int argc, char* argv[]) {
   unsigned int input_size = width * height * 4 * sizeof(unsigned char);
   unsigned int output_size = input_size/4;
 
-  // define variables for sections
-  int xNumSections, yNumSections;
-  getSections(&xNumSections, &yNumSections, threads_no);
+  // Get number of sections using number of threads
+  int threads_no_copy = threads_no;
+  int xNumSections = 1;
+  int yNumSections = 1;
+  bool side = true;
+
+  while (threads_no_copy > 1) {
+    if (!side) {
+      yNumSections= yNumSections * 2;
+    } else {
+      xNumSections= xNumSections * 2;
+    }
+    side = !side;
+    threads_no_copy = threads_no_copy / 2;
+  }
 
   // record start time
   clock_t start = clock();
