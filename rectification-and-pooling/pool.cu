@@ -13,14 +13,13 @@ __global__ void max_pooling(unsigned char* original_img, unsigned char* new_img,
 	
 	// TODO: Fix logic bug
 	for (int i = threadIdx.x; i < size/4; i = i + threads_no) {
-	/*	if (i%2==0){
+    /*if (i%2==0){
       position = 4*i;
     }else{
         position = (4*i)-2;
     }*/
 
     position = i + (4 * (i / 4)) + (width * 4 * (i / (width * 2)));
-
 		max = original_img[position];
 		if (original_img[position + 4] > max)
 			max = original_img[position + 4];
@@ -36,16 +35,15 @@ __global__ void max_pooling(unsigned char* original_img, unsigned char* new_img,
 int main(int argc, char* argv[]) {
 	
   if (argc <= 1) {
-        return printf("No arguments provided! Please add input file name, output file name and thread number to the program call!");
-    } else if (argc > 1 && argc < 4) {
-        return printf("Missing arguments! Please check that you have provided the input file name, output file name and the number of threads!");
-    }
-
+    return printf("No arguments provided! Please add input file name, output file name and thread number to the program call!");
+  } else if (argc > 1 && argc < 4) {
+    return printf("Missing arguments! Please check that you have provided the input file name, output file name and the number of threads!");
+  }
 
   // get inputs from the command line
-    char *input_filename = argv[1];
-    char *output_filename = argv[2];
-    int threads_no = atoi(argv[3]);
+  char *input_filename = argv[1];
+  char *output_filename = argv[2];
+  int threads_no = atoi(argv[3]);
 
   // initalize variables for error, input image, input image width and input image height
   unsigned error;
@@ -53,8 +51,7 @@ int main(int argc, char* argv[]) {
   unsigned width, height;
   
   // load input image from file to buffer array
-	error = lodepng_decode32_file(&input_img, &width, &height,
-		input_filename);
+	error = lodepng_decode32_file(&input_img, &width, &height, input_filename);
 
   // if there is an error while loading the file, return the error
 	if (error) {
