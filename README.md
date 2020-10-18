@@ -1,16 +1,15 @@
-# Parallel Computing
+# Parallel Computing #
 
 Parallel Computing Practice using CUDA C/C++ libraries.
 
-## Rectification
+## Rectification ##
 
 This CUDA file (rectify.cu) has been created using the Jupyter Notebook "rectification.ipynb" on Google Colab. However, it is possible to directly work on the rectify.cu file from a text editor.
 
-### Important Notes
+## Logic Gates Simulation ##
 
-- In order to use .c files in your CUDA code, you have to name change the extension of the file to ".cpp". Otherwise, the NVIDIA CUDA compiler `nvcc` cannot indetify the methods used from that file.
+This folder includes three different implementation of a Logic Gate Simulation program.
 
-- `cudaMemcpy` is also tricky. I was passing the physical address of my pointer and this was causing an error in the code. However, you won't get an error message when this happens. The code compiles correctly and can be run on the terminal. I noticed this because I wasn't getting the result I was expecting to at the end, which was a png file as an output. Keep in mind while working with `cudaMemcpy` that sometimes passing a pointer or the physical address of the pointer won't work.
+1. `sequential.c`: This is the sequential implementation of the logic gate simulation program. To use it, simply compile the program by running the command `gcc sequential.c -o build/sequential` and then calling the command `./build/sequential <input-textfile-name> <input-file-length> <output-textfile-name>`.
 
-### Useful Links
-https://developer.nvidia.com/blog/even-easier-introduction-cuda/
+2. `parallelal_explicit.cu`: This is the parallel implementation of the logic gate simulation program using CUDA. Difference is that, this program uses explicit device memory allocation and memory transfer between the host (CPU) and the device (GPU). To use it, you need to make sure you have CUDA development kit installed. Then, you can compile the program by running the command `nvcc parallelal_explicit.cu -o build/parallelal_explicit`. You can then call run the program by running the command `./build/parallel_explicit <input-textfile-name> <input-file-length> <output-textfile-name>`.
