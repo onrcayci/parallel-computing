@@ -70,11 +70,11 @@ int main(int argc, char* argv[]) {
     if (!input_fptr) return printf("Error opening the input file!");
 
     // read the file line by line and populate input_data array
-    char line[100];
+    char line[10];
     char input_data[input_size*3];
 
     for (int i = 0; i < input_size; i++) {
-        fgets(line, 99, input_fptr);
+        fgets(line, 9, input_fptr);
         input_data[i*3] = line[0];
         input_data[i*3+1] = line[2];
         input_data[i*3+2] = line[4];

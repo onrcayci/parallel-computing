@@ -68,7 +68,9 @@ int main(int argc, char* argv[]) {
     clock_t start = clock();
 
     // read each line
-    while(fgets(line, 9, input_fptr) != NULL) {
+    for (int i = 0; i < input_size; i++) {
+        // get the next line
+        fgets(line, 9, input_fptr);
         // check the logic gate number
         char* output;
         switch (line[4] - '0') {
