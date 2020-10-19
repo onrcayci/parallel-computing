@@ -71,30 +71,25 @@ int main(int argc, char* argv[]) {
 
     // read the file line by line and populate input_data array
     char line[10];
-    char input_data[input_size*3];
-
-    for (int i = 0; i < input_size; i++) {
-        fgets(line, 9, input_fptr);
-        input_data[i*3] = line[0];
-        input_data[i*3+1] = line[2];
-        input_data[i*3+2] = line[4];
-    }
-
-    // close file pointer
-    fclose(input_fptr);
 
     // allocate CUDA variables
     char* d_input;
     char* d_output;
     int input_array_size = input_size * 3 * sizeof(char);
     int output_array_size = input_size * sizeof(char);
-
+    
     cudaMallocManaged(&d_input, input_array_size);
     cudaMallocManaged(&d_output, output_array_size);
 
-    for (int i = 0; i < input_array_size; i++) {
-        d_input[i] = input_data[i];
+    for (int i = 0; i < input_size; i++) {
+        fgets(line, 9, input_fptr);
+        d_input[i*3] = line[0];
+        d_input[i*3+1] = line[2];
+        d_input[i*3+2] = line[4];
     }
+
+    // close file pointer
+    fclose(input_fptr);
 
     clock_t start = clock();
 
