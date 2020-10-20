@@ -77,7 +77,7 @@ int main(int argc, char* argv[]) {
     char* d_output;
     int input_array_size = input_size * 3 * sizeof(char);
     int output_array_size = input_size * sizeof(char);
-    
+
     cudaMallocManaged(&d_input, input_array_size);
     cudaMallocManaged(&d_output, output_array_size);
 
@@ -88,10 +88,14 @@ int main(int argc, char* argv[]) {
         d_input[i*3+2] = line[4];
     }
 
-    // close file pointer
-    fclose(input_fptr);
+    // prefetch the data to the GPU
+    int device = -1;
+    cudaGetDevice(&device);
 
-    clock_t start = clock();
+    clock_t start = clock(); 
+
+    cudaMemPrefetchAsync(d_input, input_array_size, device, NULL);
+    cudaMemPrefetchAsync(d_output, output_array_size, device, NULL);
 
     // call device kernel
     computeLogicGates<<<input_size, 1>>>(d_input, d_output, input_array_size);
