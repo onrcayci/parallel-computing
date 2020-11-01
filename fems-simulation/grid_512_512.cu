@@ -25,7 +25,8 @@ __global__ void calculate_inner_elements(float* d_u, float* d_u1, float* d_u2) {
             int i = ept * t_i + h;
             int j = ept * t_j + w;
             if (i >= 1 && i <= (N - 2) && j >= 1 && j <= (N - 2)) {
-                d_u[N*i+j] = (p * (d_u1[N*(i-1)+j] + d_u1[N*(i+1)+j] + d_u1[N*i+(j-1)] + d_u1[N*i+(j+1)] - (4 * d_u1[N*i+j])) + (2 * d_u1[N*i+j]) - ((1 - n) * d_u2[N*i+j])) / (1 + n);
+                d_u[N*i+j] = (p * (d_u1[N*(i-1)+j] + d_u1[N*(i+1)+j] + d_u1[N*i+(j-1)] + d_u1[N*i+(j+1)] - (4 * d_u1[N*i+j]))
+                                + (2 * d_u1[N*i+j]) - ((1 - n) * d_u2[N*i+j])) / (1 + n);
             }
         }
     }
