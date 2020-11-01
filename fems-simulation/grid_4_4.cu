@@ -84,6 +84,19 @@ __global__ void update_positional_arrays(float* d_u, float* d_u1, float* d_u2) {
     }
 }
 
+// parallelize positional array initialization
+__global__ void create_positional_arrays(float* d_u, float* d_u1, float* d_u2) {
+    int i = blockIdx.x;
+    int j = blockIdx.y;
+    if(i < N && j < N) {
+        int index = N * i + j;
+        d_u[index] = 0;
+        if (i == N/2 && j == N/2) d_u1[index] = 1;
+        else d_u1[index] = 0;
+        d_u2[index] = 0;
+    }
+}
+
 int main(int argc, char* argv[]) {
 
     // check if the iteration value T is provided
@@ -93,22 +106,6 @@ int main(int argc, char* argv[]) {
 
     // get the iteration value T from the command line
     int iteration = atoi(argv[1]);
-
-    // instantiate the 2D u, u1 and u2 matrices
-    float* u = (float*) malloc(N * N * sizeof(float));
-    float* u1 = (float*) malloc(N * N * sizeof(float));
-    float* u2 = (float*) malloc(N * N * sizeof(float));
-
-    // populate the matrices with zeros
-    for (int i = 0; i < N; i++) {
-        for (int j = 0; j < N; j++) {
-            int index = N * i + j;
-            u[index] = 0;
-            if (i == N / 2 && j == N / 2) u1[index] = 1;
-            else u1[index] = 0;
-            u2[index] = 0;
-        }
-    }
 
     // instantiate device variables
     float* d_u;
@@ -120,6 +117,16 @@ int main(int argc, char* argv[]) {
     cudaMalloc(&d_u1, N * N * sizeof(float));
     cudaMalloc(&d_u2, N * N * sizeof(float));
 
+    // 2D block structure
+    dim3 blocks = dim3(N, N);
+
+    create_positional_arrays<<<blocks, 1>>>(d_u, d_u1, d_u2);
+
+    cudaDeviceSynchronize();
+
+    // instantiate the 2D u, u1 and u2 matrices
+    float* u = (float*) malloc(N * N * sizeof(float));
+
     // print out the size of the grid
     printf("Size of grid: %d nodes\n", N*N);
 
@@ -127,14 +134,6 @@ int main(int argc, char* argv[]) {
 
     // start simulation
     for (int T = 0; T < iteration; T++) {
-
-        // copy the variables from host to device
-        cudaMemcpy(d_u, u, N * N * sizeof(float), cudaMemcpyHostToDevice);
-        cudaMemcpy(d_u1, u1, N * N * sizeof(float), cudaMemcpyHostToDevice);
-        cudaMemcpy(d_u2, u2, N * N * sizeof(float), cudaMemcpyHostToDevice);
-
-        // 2D block structure
-        dim3 blocks = dim3(N, N);
         
         // call the device kernel function
         calculate_inner_elements<<<blocks, 1>>>(d_u, d_u1, d_u2);
@@ -146,8 +145,6 @@ int main(int argc, char* argv[]) {
 
         // copy the results back to host
         cudaMemcpy(u, d_u, N * N * sizeof(float), cudaMemcpyDeviceToHost);
-        cudaMemcpy(u1, d_u1, N * N * sizeof(float), cudaMemcpyDeviceToHost);
-        cudaMemcpy(u2, d_u2, N * N * sizeof(float), cudaMemcpyDeviceToHost);
         
         // print u[N/2][N/2]
         printf("(%d, %d): %f\n", N/2, N/2, u[N*(N/2)+(N/2)]);
@@ -161,8 +158,6 @@ int main(int argc, char* argv[]) {
 
     // free up the host memory used by the positional arrays
     free(u);
-    free(u1);
-    free(u2);
 
     // free up the device memory used by the positional arrays
     cudaFree(d_u);
