@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 
 // instantiate coefficients
 const float n = 0.0002;
@@ -38,8 +37,6 @@ int main(int argc, char* argv[]) {
 
     printf("Size of grid: %d nodes\n", N*N);
 
-    clock_t start = clock();
-
     // start simulation
     for (int T = 0; T < iteration; T++) {
         // calculate the position of the interior elements
@@ -75,11 +72,6 @@ int main(int argc, char* argv[]) {
         printf("(%d, %d): %f\n", N/2, N/2, u[N/2][N/2]);
 
     } // end simulation
-
-    clock_t end = clock();
-    
-    double runtime = (double) (end - start) / CLOCKS_PER_SEC;
-    printf("Execution time: %f ms\n", runtime * 1000);
 
     // free up the memory used my the positional arrays
     free(u);

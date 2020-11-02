@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 
@@ -107,6 +106,12 @@ int main(int argc, char* argv[]) {
     // get the iteration value T from the command line
     int iteration = atoi(argv[1]);
 
+    // instantiate the 2D u matrix
+    float* u = (float*) malloc(N * N * sizeof(float));
+
+    // print out the size of the grid
+    printf("Size of grid: %d nodes\n", N*N);
+
     // instantiate device variables
     float* d_u;
     float* d_u1;
@@ -123,14 +128,6 @@ int main(int argc, char* argv[]) {
     create_positional_arrays<<<blocks, 1>>>(d_u, d_u1, d_u2);
 
     cudaDeviceSynchronize();
-
-    // instantiate the 2D u, u1 and u2 matrices
-    float* u = (float*) malloc(N * N * sizeof(float));
-
-    // print out the size of the grid
-    printf("Size of grid: %d nodes\n", N*N);
-
-    clock_t start = clock();
 
     // start simulation
     for (int T = 0; T < iteration; T++) {
@@ -150,11 +147,6 @@ int main(int argc, char* argv[]) {
         printf("(%d, %d): %f\n", N/2, N/2, u[N*(N/2)+(N/2)]);
 
     } // end simulation
-
-    clock_t end = clock();
-    
-    double runtime = (double) (end - start) / CLOCKS_PER_SEC;
-    printf("Execution time: %f ms\n", runtime * 1000);
 
     // free up the host memory used by the positional arrays
     free(u);

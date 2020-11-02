@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 
@@ -140,6 +139,12 @@ int main(int argc, char* argv[]) {
     // get the iteration value T from the command line
     int iteration = atoi(argv[1]);
 
+    // instantiate the 2D u matrix
+    float* u = (float*) malloc(N * N * sizeof(float));
+
+    // print out the size of the grid
+    printf("Size of grid: %d nodes\n", N*N);
+
     // instantiate device variables
     float* d_u;
     float* d_u1;
@@ -150,17 +155,11 @@ int main(int argc, char* argv[]) {
     cudaMalloc(&d_u1, N * N * sizeof(float));
     cudaMalloc(&d_u2, N * N * sizeof(float));
 
+    clock_t start = clock();
+
     create_positional_arrays<<<blocks, threads>>>(d_u, d_u1, d_u2);
 
     cudaDeviceSynchronize();
-
-    // instantiate the 2D u, u1 and u2 matrices
-    float* u = (float*) malloc(N * N * sizeof(float));
-
-    // print out the size of the grid
-    printf("Size of grid: %d nodes\n", N*N);
-
-    clock_t start = clock();
 
     // start simulation
     for (int T = 0; T < iteration; T++) {
