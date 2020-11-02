@@ -77,7 +77,7 @@ __global__ void convolution(unsigned char* img, unsigned char* convoluted_img, i
 	}
 
 	// typecast the row values from float to int to use in the loop
-    int start_row_int = (int) start_row;
+    	int start_row_int = (int) start_row;
 	int end_row_int = (int) end_row;
 
 	// iterate over the image under the given bounds specificed by starting row, ending row, starting col, and ending col
