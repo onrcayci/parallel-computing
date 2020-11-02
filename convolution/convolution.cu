@@ -1,4 +1,3 @@
-
 // C libraries
 #include <stdlib.h>
 #include <stdio.h>
@@ -78,7 +77,7 @@ __global__ void convolution(unsigned char* img, unsigned char* convoluted_img, i
 	}
 
 	// typecast the row values from float to int to use in the loop
-  int start_row_int = (int) start_row;
+    int start_row_int = (int) start_row;
 	int end_row_int = (int) end_row;
 
 	// iterate over the image under the given bounds specificed by starting row, ending row, starting col, and ending col
@@ -125,15 +124,15 @@ int main(int argc, char* argv[])
 		
 	// check if the arguments are valid
 	if (argc <= 1) {
-      return printf("No arguments provided! Please add input file name, output file name and thread number to the program call!");
-  } else if (argc > 1 && argc < 4) {
-      return printf("Missing arguments! Please check that you have provided the input file name, output file name and the number of threads!");
-  }
+		return printf("No arguments provided! Please add input file name, output file name and thread number to the program call!");
+  	} else if (argc > 1 && argc < 4) {
+		return printf("Missing arguments! Please check that you have provided the input file name, output file name and the number of threads!");
+  	}
 
-  // get inputs from the command line
-  char *input_filename = argv[1];
-  char *output_filename = argv[2];
-  int thread_count = atoi(argv[3]);
+	// get inputs from the command line
+	char *input_filename = argv[1];
+	char *output_filename = argv[2];
+	int thread_count = atoi(argv[3]);
 
 	// declare variables for error, input image, convoluted image, input image width, input image height, input image length, and convoluted image length
 	unsigned error;
@@ -193,5 +192,5 @@ int main(int argc, char* argv[])
 	cudaFree(convoluted_img);
 	cudaFree(weight_matrix);
 
-  return 0;
+  	return 0;
 }
