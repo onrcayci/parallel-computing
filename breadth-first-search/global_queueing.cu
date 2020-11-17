@@ -1,13 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-inline cudaError_t checkCudaErr(cudaError_t err, const char* msg) {
-  if (err != cudaSuccess) {
-    fprintf(stderr, "CUDA Runtime error at %s: %s\n", msg, cudaGetErrorString(err));
-  }
-  return err;
-}
-
 // method to read the first, second and fourth input files
 int read_input_one_two_four(int** input, char* filepath) {
     FILE* fp = fopen(filepath, "r");
@@ -144,6 +137,13 @@ __global__ void global_queuing_kernel(int totalThreads, int numNodes, int* nodeP
         }
          __syncthreads();
     }
+}
+
+inline cudaError_t checkCudaErr(cudaError_t err, const char* msg) {
+  if (err != cudaSuccess) {
+    fprintf(stderr, "CUDA Runtime error at %s: %s\n", msg, cudaGetErrorString(err));
+  }
+  return err;
 }
 
 int main(int argc, char *argv[]){
