@@ -184,6 +184,10 @@ int main(int argc, char *argv[]){
     int blockSize = 128;
     
     // Cuda variables
+    int* nodePtrs_cuda = (int*)malloc( numNodePtrs * sizeof(int)) ; 
+    cudaMalloc (&nodePtrs_cuda, numNodePtrs * sizeof(int));
+    cudaMemcpy(nodePtrs_cuda, nodePtrs_h, numNodePtrs * sizeof(int), cudaMemcpyHostToDevice);
+
     int* currLevelNodes_cuda = (int*)malloc( numCurrLevelNodes * sizeof(int)) ; 
     cudaMalloc (&currLevelNodes_cuda, numCurrLevelNodes * sizeof(int));
     cudaMemcpy(currLevelNodes_cuda, currLevelNodes_h, numCurrLevelNodes * sizeof(int), cudaMemcpyHostToDevice);
@@ -192,13 +196,13 @@ int main(int argc, char *argv[]){
     cudaMalloc (&nodeNeighbors_cuda, numTotalNeighbors_h * sizeof(int));
     cudaMemcpy(nodeNeighbors_cuda, nodeNeighbors_h, numTotalNeighbors_h * sizeof(int), cudaMemcpyHostToDevice);
 
-    int* nodePtrs_cuda = (int*)malloc( numNodePtrs * sizeof(int)) ; 
-    cudaMalloc (&nodePtrs_cuda, numNodePtrs * sizeof(int));
-    cudaMemcpy(nodePtrs_cuda, nodePtrs_h, numNodePtrs * sizeof(int), cudaMemcpyHostToDevice);
-
     int* nodeVisited_cuda = (int*)malloc( numNodesSize) ; 
     cudaMalloc (&nodeVisited_cuda, numNodesSize);
     cudaMemcpy(nodeVisited_cuda, nodeVisited_h,numNodesSize, cudaMemcpyHostToDevice);
+
+    int* nodeGate_cuda = (int*)malloc( numNodesSize) ; 
+    cudaMalloc (&nodeGate_cuda, numNodesSize);
+    cudaMemcpy(nodeGate_cuda, nodeGate_h, numNodesSize, cudaMemcpyHostToDevice);
 
     int* nodeInput_cuda = (int*)malloc( numNodesSize) ; 
     cudaMalloc (&nodeInput_cuda, numNodesSize);
@@ -207,10 +211,6 @@ int main(int argc, char *argv[]){
     int* nodeOutput_cuda = (int*)malloc(numNodesSize) ; 
     cudaMalloc (&nodeOutput_cuda, numNodesSize);
     cudaMemcpy(nodeOutput_cuda, nodeOutput_h, numNodesSize, cudaMemcpyHostToDevice);
-
-    int* nodeGate_cuda = (int*)malloc( numNodesSize) ; 
-    cudaMalloc (&nodeGate_cuda, numNodesSize);
-    cudaMemcpy(nodeGate_cuda, nodeGate_h, numNodesSize, cudaMemcpyHostToDevice);
 
     // kernel call
     global_queuing_kernel <<< numBlocks, blockSize >>> (blockSize * numBlocks, numNodes, nodePtrs_cuda, currLevelNodes_cuda, nodeNeighbors_cuda, nodeVisited_cuda, nodeGate_cuda, nodeInput_cuda, nodeOutput_cuda);
