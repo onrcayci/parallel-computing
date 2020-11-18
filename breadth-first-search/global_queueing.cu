@@ -130,10 +130,10 @@ __global__ void global_queuing_kernel(int totalThreads, int numNodes, int* nodeP
 
                 //Update node output
                 nodeOutput[neighborIndex] = result;
-                int index = atomicAdd(&numNextLevelNodes,1); 
+                int globalQueueIndex = atomicAdd(&numNextLevelNodes,1); 
                
                 //Add it to the global queue
-                globalQueue[index] = neighborIndex; 
+                globalQueue[globalQueueIndex] = neighborIndex; 
             }    
         }
          __syncthreads();
