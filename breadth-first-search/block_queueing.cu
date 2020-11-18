@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 // method to read the first, second and fourth input files
 int read_input_one_two_four(int** input, char* filepath) {
@@ -239,9 +240,13 @@ int main(int argc, char *argv[]){
     cudaMalloc (&nodeOutput_cuda, numNodesSize);
     cudaMemcpy(nodeOutput_cuda, nodeOutput_h, numNodesSize, cudaMemcpyHostToDevice);
 
+    clock_t start = clock();
+
     // kernel call
     block_queuing_kernel <<< numBlocks, blockSize, blockQueueSize*sizeof(int) >>> (blockSize * numBlocks, numNodes, nodePtrs_cuda, currLevelNodes_cuda, nodeNeighbors_cuda, nodeVisited_cuda, nodeGate_cuda, nodeInput_cuda, nodeOutput_cuda, blockQueueSize);
 
+    clock_t end = clock();
+    
     checkCudaErr(cudaDeviceSynchronize(), "Synchronization");
     checkCudaErr(cudaGetLastError(), "GPU");
 
@@ -275,6 +280,9 @@ int main(int argc, char *argv[]){
     }
     fclose(nextLevelOutputFile);
 
+    double runtime = (double) (end - start) / CLOCKS_PER_SEC * 1000;
+    printf("Execution time: %f ms\n", runtime);
+
     // free variables
     free(nodePtrs_h);
     free(nodeNeighbors_h);
@@ -292,4 +300,6 @@ int main(int argc, char *argv[]){
     cudaFree(nodeInput_cuda);
     cudaFree(nodeOutput_cuda);
     cudaFree(nodeGate_cuda);
+    
+    return 0;
 }
