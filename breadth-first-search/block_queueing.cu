@@ -55,19 +55,28 @@ int read_input_three(int** input1, int** input2, int** input3, int** input4, cha
 __device__ int globalQueue[7000000];
 __device__ int numNextLevelNodes = 0;
 
-__global__ void global_queuing_kernel(int totalThreads, int numNodes, int* nodePtrs, int* currLevelNodes, int* nodeNeighbors, int* nodeVisited, int* nodeGate, int* nodeInput, int* nodeOutput) {
+__global__ void block_queuing_kernel(int totalThreads, int numNodes, int* nodePtrs, int* currLevelNodes, int* nodeNeighbors, int* nodeVisited, int* nodeGate, int* nodeInput, int* nodeOutput, int blockQueueSize){
     
     int nodesPerThread = numNodes / totalThreads;
     int threadIndex = threadIdx.x + (blockDim.x * blockIdx.x);
     int beginIndex = threadIndex * nodesPerThread;
-
-    //Loop over all nodes in the current level
+    
+    // Initialize shared memory queue
+    extern __shared__ int localQueue[];
+    __shared__ int localQueueSize, blockGlobalQueueIndex;
+    
+    if (threadIdx.x == 0) {
+        localQueueSize = 0;
+    }
+    __syncthreads();
+    
+    // Loop over all nodes in the current level
     for (int index = beginIndex; index < numNodes && index < beginIndex + nodesPerThread; index++) {
-        
+      
         int nodeIndex = currLevelNodes[index];
-
+        
         //Loop over all neighbors of the node
-        for (int secondIndex = nodePtrs[nodeIndex]; secondIndex < nodePtrs[nodeIndex+1]; secondIndex++) {   
+        for (int secondIndex = nodePtrs[nodeIndex]; secondIndex < nodePtrs[nodeIndex+1]; secondIndex++) {
             
             int neighborIndex = nodeNeighbors[secondIndex];
             const int alreadyVisited = atomicExch(&(nodeVisited[neighborIndex]),1);
@@ -75,6 +84,7 @@ __global__ void global_queuing_kernel(int totalThreads, int numNodes, int* nodeP
             //If the neighbor hasn’t been visited yet
             if (!alreadyVisited) {
                 
+                const int localQueueIndex = atomicAdd(&localQueueSize,1);
                 int result = 0;
                 int nInputV = nodeInput[neighborIndex];
                 int nOutputV = nodeOutput[nodeIndex];
@@ -126,16 +136,33 @@ __global__ void global_queuing_kernel(int totalThreads, int numNodes, int* nodeP
                   }
                   break;         
                 }  
-
+                
                 //Update node output
                 nodeOutput[neighborIndex] = result;
-                int index = atomicAdd(&numNextLevelNodes,1); 
-               
-                //Add it to the global queue
-                globalQueue[index] = neighborIndex; 
-            }    
+
+                // there is space in the local queue -> add it to the local block queue
+                if (localQueueIndex < blockQueueSize) { 
+                  localQueue[localQueueIndex] = neighborIndex;
+                // If full, add it directly to global queue 
+                } else { 
+                  localQueueSize = blockQueueSize;
+                  const int globalQueueIndex = atomicAdd(&numNextLevelNodes, 1);
+                  globalQueue[globalQueueIndex] = neighborIndex; 
+                }
+            }  
         }
          __syncthreads();
+    }
+    __syncthreads();
+    
+    if (threadIdx.x == 0) {
+        blockGlobalQueueIndex = atomicAdd(&numNextLevelNodes, localQueueSize);
+    }
+    __syncthreads();
+
+    //Store block queue in global queue
+    for (int i = threadIdx.x; i < localQueueSize; i += blockDim.x) {
+        globalQueue[blockGlobalQueueIndex + i] = localQueue[i];
     }
 }
 
@@ -148,10 +175,10 @@ inline cudaError_t checkCudaErr(cudaError_t err, const char* msg) {
 
 int main(int argc, char *argv[]){
     
-    if (argc < 7) {
+    if (argc < 10) {
         return fprintf(stderr, "Missing input argument(s)!\n");
     }
-    
+
     // Variables
     int numNodePtrs;
     int numNodes;
@@ -165,24 +192,24 @@ int main(int argc, char *argv[]){
     int *nodeGate_h;
     int *nodeInput_h;
     int *nodeOutput_h;
-    
-    numNodePtrs = read_input_one_two_four(&nodePtrs_h, argv[1]);
-    numTotalNeighbors_h = read_input_one_two_four(&nodeNeighbors_h, argv[2]);
-    numNodes = read_input_three(&nodeVisited_h, &nodeGate_h, &nodeInput_h, &nodeOutput_h,argv[3]);
-    numCurrLevelNodes = read_input_one_two_four(&currLevelNodes_h, argv[4]);
-    
-    char* nodeOutput_fileName = argv[5];
-    char* nextLevelNodes_fileName = argv[6];
-    
-    // output
-    int *nextLevelNodes_h = (int *)malloc(numNodes*sizeof(int));
-    
-    checkCudaErr(cudaMemcpyToSymbol(globalQueue,nextLevelNodes_h, numNodes * sizeof(int)), "Copying");
-    
+
+    int numBlocks = atoi(argv[1]);
+    int blockSize = atoi(argv[2]);
+    int blockQueueSize = atoi(argv[3]);
+
+    numNodePtrs = read_input_one_two_four(&nodePtrs_h, argv[4]);
+    numTotalNeighbors_h = read_input_one_two_four(&nodeNeighbors_h, argv[5]);
+    numNodes = read_input_three(&nodeVisited_h, &nodeGate_h, &nodeInput_h, &nodeOutput_h,argv[6]);
+    numCurrLevelNodes = read_input_one_two_four(&currLevelNodes_h, argv[7]);
+    char* nodeOutput_fileName = argv[8];
+    char* nextLevelNodes_fileName = argv[9];
+
     int numNodesSize = numNodes * sizeof(int);
-    int numBlocks = 35;
-    int blockSize = 128;
-    
+
+    //output
+    int *nextLevelNodes_h = (int *)malloc(numNodes*sizeof(int));
+    checkCudaErr(cudaMemcpyToSymbol(globalQueue,nextLevelNodes_h, numNodes * sizeof(int)), "Copying");
+
     // Cuda variables
     int* nodePtrs_cuda = (int*)malloc( numNodePtrs * sizeof(int)) ; 
     cudaMalloc (&nodePtrs_cuda, numNodePtrs * sizeof(int));
@@ -213,7 +240,7 @@ int main(int argc, char *argv[]){
     cudaMemcpy(nodeOutput_cuda, nodeOutput_h, numNodesSize, cudaMemcpyHostToDevice);
 
     // kernel call
-    global_queuing_kernel <<< numBlocks, blockSize >>> (blockSize * numBlocks, numNodes, nodePtrs_cuda, currLevelNodes_cuda, nodeNeighbors_cuda, nodeVisited_cuda, nodeGate_cuda, nodeInput_cuda, nodeOutput_cuda);
+    block_queuing_kernel <<< numBlocks, blockSize, blockQueueSize*sizeof(int) >>> (blockSize * numBlocks, numNodes, nodePtrs_cuda, currLevelNodes_cuda, nodeNeighbors_cuda, nodeVisited_cuda, nodeGate_cuda, nodeInput_cuda, nodeOutput_cuda, blockQueueSize);
 
     checkCudaErr(cudaDeviceSynchronize(), "Synchronization");
     checkCudaErr(cudaGetLastError(), "GPU");
@@ -234,19 +261,18 @@ int main(int argc, char *argv[]){
         fprintf(nodeOutputFile,"%d\n",(outputBuffer[counter]));
         counter++;
     }
-    
+
     fclose(nodeOutputFile);
-    
+
     // write next level output file
     FILE *nextLevelOutputFile = fopen(nextLevelNodes_fileName, "w");
     counter = 0;
     fprintf(nextLevelOutputFile,"%d\n",numNextLevelNodes_h);
-    
+
     while (counter < numNextLevelNodes_h) {
         fprintf(nextLevelOutputFile,"%d\n",(nextLevelNodes_h[counter]));
         counter++;
     }
-    
     fclose(nextLevelOutputFile);
 
     // free variables
